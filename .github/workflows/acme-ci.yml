@@ -93,7 +93,9 @@ jobs:
         run: npm run test:integration
         env:
           DATABASE_URL: postgresql://acme:acme@localhost:55432/acme_test
-          INTEGRATION_WORKERS: auto
+          # Worker concurrency is derived from Postgres' connection budget
+          # (max_connections - reserved) / APP_DB_POOL_SIZE, so it no longer
+          # scales with runner vCPUs and can't exhaust the server.
           APP_DB_POOL_SIZE: 4
 
       - name: Keep runner alive on failure for SSH debugging
