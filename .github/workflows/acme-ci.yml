@@ -19,6 +19,7 @@ jobs:
   fraud-model-benchmark:
     name: Fraud model benchmark
     runs-on: blacksmith-8vcpu-ubuntu-2404
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -35,9 +36,17 @@ jobs:
           PROFILE_CPU_ITERATIONS: 9500000
           PROFILE_CPU_WORKERS: 8
 
+      - name: Keep runner alive on failure for SSH debugging
+        if: failure()
+        run: |
+          echo "Job failed — holding this runner open for 30 minutes so you can SSH in."
+          echo "Copy the ssh command from the 'Setup runner' step above to connect."
+          sleep 1800
+
   unit-tests:
     name: Unit tests shard ${{ matrix.shard }}/8
     runs-on: blacksmith-8vcpu-ubuntu-2404
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -54,9 +63,17 @@ jobs:
       - run: npm ci
       - run: npm run test:unit -- --shard=${{ matrix.shard }}/8
 
+      - name: Keep runner alive on failure for SSH debugging
+        if: failure()
+        run: |
+          echo "Job failed — holding this runner open for 30 minutes so you can SSH in."
+          echo "Copy the ssh command from the 'Setup runner' step above to connect."
+          sleep 1800
+
   integration-tests:
     name: Integration tests
     runs-on: blacksmith-16vcpu-ubuntu-2404
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -79,9 +96,17 @@ jobs:
           INTEGRATION_WORKERS: auto
           APP_DB_POOL_SIZE: 4
 
+      - name: Keep runner alive on failure for SSH debugging
+        if: failure()
+        run: |
+          echo "Job failed — holding this runner open for 30 minutes so you can SSH in."
+          echo "Copy the ssh command from the 'Setup runner' step above to connect."
+          sleep 1800
+
   docker-build:
     name: Docker build (${{ matrix.platform }})
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -114,3 +139,10 @@ jobs:
           push: false
           load: false
           tags: acme-payments-ci-lab:${{ matrix.tag-suffix }}
+
+      - name: Keep runner alive on failure for SSH debugging
+        if: failure()
+        run: |
+          echo "Job failed — holding this runner open for 30 minutes so you can SSH in."
+          echo "Copy the ssh command from the 'Setup runner' step above to connect."
+          sleep 1800
