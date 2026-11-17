@@ -25,13 +25,41 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Balance tests across shards by duration (Longest Processing Time greedy):
+// sort tests longest-first, then assign each to the currently lightest shard.
+// This keeps every shard's total duration close, instead of the old
+// positional (idx % total) split that could pile all the slow tests onto one.
+function assignTestsToShards(manifest, total) {
+  const shards = Array.from({ length: total }, () => ({ tests: [], durationMs: 0 }));
+
+  const sorted = [...manifest].sort((a, b) => {
+    if (b.durationMs !== a.durationMs) {
+      return b.durationMs - a.durationMs;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  for (const test of sorted) {
+    let target = 0;
+    for (let i = 1; i < total; i++) {
+      if (shards[i].durationMs < shards[target].durationMs) {
+        target = i;
+      }
+    }
+    shards[target].tests.push(test);
+    shards[target].durationMs += test.durationMs;
+  }
+
+  return shards;
+}
+
 async function main() {
   const { index, total } = parseShard(process.argv.slice(2));
   const manifestPath = path.join(__dirname, '..', 'fixtures', 'test-manifest.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   const scale = Number(process.env.TEST_DURATION_SCALE || 0.15);
 
-  const tests = manifest.filter((_, idx) => idx % total === index - 1);
+  const tests = assignTestsToShards(manifest, total)[index - 1].tests;
   const expectedDuration = tests.reduce((sum, test) => sum + test.durationMs, 0);
 
   console.log(`running unit test shard ${index}/${total}`);
